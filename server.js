@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // Proxy vers intervals.icu
-app.all('/api/*', async (req, res) => {
+app.all('/api*', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey) return res.status(401).json({ error: 'No API key' });
 
