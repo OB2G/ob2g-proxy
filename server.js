@@ -12,7 +12,7 @@ app.all('/api/*', async (req, res) => {
   if (!apiKey) return res.status(401).json({ error: 'No API key' });
 
   const path = req.path.replace('/api', '');
-  const url = 'https://intervals.icu/api/v1/athlete/i0' + path + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+  const url = 'https://intervals.icu/api/v1/athlete/i552913' + path + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
 
   try {
     const opts = {
