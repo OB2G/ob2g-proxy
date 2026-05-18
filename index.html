@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OB²G · Coach IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --black:#111111;--dark:#181818;--card:#202020;--card2:#282828;
+  --border:rgba(232,224,204,0.08);--border2:rgba(232,224,204,0.18);
+  --cream:#e8e0cc;--cream2:#c8bfa8;--cream3:#8a8070;--cream4:#504840;
+  --green:#4caf7d;--amber:#c8922a;--red:#c84040;--teal:#3a9898;
+  --z1:#3a6ea8;--z2:#4caf7d;--z3:#c8c22a;--z4:#c8922a;--z5:#c84040;
+  --font-h:'Bebas Neue',sans-serif;--font-sub:'Barlow Condensed',sans-serif;--font-body:'Barlow',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--black);color:var(--cream);font-family:var(--font-body);overflow:hidden;}
+
+/* SETUP */
+#screen-setup{position:fixed;inset:0;z-index:20;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;}
+.s-logo{font-family:var(--font-h);font-size:64px;letter-spacing:.06em;color:var(--cream);line-height:1;margin-bottom:2px;}
+.s-logo sup{font-size:32px;vertical-align:super;color:var(--cream2);}
+.s-tag{font-family:var(--font-sub);font-size:12px;color:var(--cream3);letter-spacing:.18em;text-transform:uppercase;margin-bottom:40px;}
+.s-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:22px;}
+.s-lbl{font-size:11px;color:var(--cream3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-family:var(--font-sub);}
+.s-inp{width:100%;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--cream);font-family:'Courier New',monospace;font-size:13px;outline:none;margin-bottom:8px;transition:border-color .2s;}
+.s-inp:focus{border-color:var(--cream2);}
+.s-hint{font-size:11px;color:var(--cream4);margin-bottom:20px;line-height:1.6;}
+.s-hint b{color:var(--cream2);font-weight:500;}
+.s-btn{width:100%;padding:14px;background:var(--cream);border:none;border-radius:8px;color:var(--black);font-family:var(--font-h);font-size:18px;letter-spacing:.1em;cursor:pointer;transition:opacity .15s;}
+.s-btn:disabled{opacity:.3;cursor:not-allowed;}
+.s-err{font-size:12px;color:var(--red);text-align:center;margin-top:10px;display:none;}
+
+/* APP */
+#screen-app{position:fixed;inset:0;display:none;flex-direction:column;}
+
+/* HEADER */
+#hdr{padding:10px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--black);flex-shrink:0;}
+.h-logo{font-family:var(--font-h);font-size:22px;letter-spacing:.06em;color:var(--cream);line-height:1;}
+.h-logo sup{font-size:13px;vertical-align:super;color:var(--cream3);}
+.h-sep{width:1px;height:18px;background:var(--border2);}
+.h-name{font-size:12px;color:var(--cream3);flex:1;font-family:var(--font-sub);letter-spacing:.04em;}
+.h-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.h-ftp{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border2);border-radius:20px;padding:4px 4px 4px 10px;}
+.h-fv{font-family:var(--font-h);font-size:15px;color:var(--cream);letter-spacing:.04em;}
+.h-btn{width:26px;height:26px;border-radius:50%;background:rgba(232,224,204,.08);border:1px solid var(--border2);color:var(--cream2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;}
+.h-btn:active{background:rgba(232,224,204,.16);}
+
+/* MODALS */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.85);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;}
+.modal.open{display:flex;}
+.m-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:22px;margin:auto;}
+.m-title{font-family:var(--font-h);font-size:26px;letter-spacing:.06em;color:var(--cream);margin-bottom:4px;}
+.m-sub{font-size:12px;color:var(--cream3);margin-bottom:20px;}
+.m-section{font-size:10px;font-weight:600;color:var(--cream3);text-transform:uppercase;letter-spacing:.12em;margin:16px 0 8px;font-family:var(--font-sub);}
+.m-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.m-row.full{grid-template-columns:1fr;}
+.m-field{display:flex;flex-direction:column;gap:4px;}
+.m-lbl{font-size:10px;color:var(--cream3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-sub);}
+.m-inp{padding:10px 12px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--cream);font-family:var(--font-body);font-size:14px;outline:none;width:100%;transition:border-color .2s;}
+.m-inp:focus{border-color:var(--cream2);}
+.m-inp.mono{font-family:var(--font-h);font-size:20px;text-align:center;letter-spacing:.04em;}
+.m-zones{background:var(--card2);border-radius:8px;padding:10px 12px;margin:12px 0;}
+.fz-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);}
+.fz-row:last-child{border-bottom:none;}
+.fz-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:6px;}
+.fz-n{color:var(--cream3);font-family:var(--font-sub);letter-spacing:.04em;display:flex;align-items:center;}
+.fz-v{color:var(--cream);font-weight:500;text-align:right;}
+.fz-accent{color:var(--green)!important;}
+.m-btns{display:flex;gap:8px;margin-top:20px;}
+.m-cancel{flex:1;padding:12px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--cream3);font-family:var(--font-body);font-size:14px;cursor:pointer;}
+.m-save{flex:2;padding:12px;background:var(--cream);border:none;border-radius:8px;color:var(--black);font-family:var(--font-h);font-size:17px;letter-spacing:.08em;cursor:pointer;}
+
+/* PROFIL SUMMARY in header area */
+.profile-bar{display:flex;gap:12px;padding:8px 14px;background:var(--dark);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+.profile-bar::-webkit-scrollbar{display:none;}
+.pb-item{display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;}
+.pb-val{font-family:var(--font-h);font-size:16px;color:var(--cream);letter-spacing:.02em;line-height:1;}
+.pb-lbl{font-size:9px;color:var(--cream4);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-sub);}
+.pb-sep{width:1px;background:var(--border2);align-self:stretch;flex-shrink:0;}
+
+/* TABS */
+#tabs{display:flex;background:var(--black);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;padding:10px 4px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--cream4);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--font-sub);transition:all .2s;}
+.tab.active{color:var(--cream);border-bottom-color:var(--cream);}
+
+/* PANELS */
+#panels{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.panel{display:none;flex-direction:column;height:100%;}
+.panel.active{display:flex;}
+.scroll{flex:1;overflow-y:auto;padding:12px 14px;}
+.scroll::-webkit-scrollbar{width:2px;}
+.scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:1px;}
+
+/* CHAT */
+#msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+#msgs::-webkit-scrollbar{width:2px;}
+#msgs::-webkit-scrollbar-thumb{background:var(--border2);}
+.mrow{display:flex;flex-direction:column;}
+.mrow.user{align-items:flex-end;}
+.mrow.coach{align-items:flex-start;}
+.mrow.sys{align-items:center;}
+.bubble{max-width:84%;padding:10px 14px;font-size:14px;line-height:1.6;word-break:break-word;border-radius:16px;}
+.bubble.user{background:var(--cream);color:var(--black);font-weight:500;border-bottom-right-radius:3px;}
+.bubble.coach{background:var(--card);color:var(--cream);border:1px solid var(--border);border-bottom-left-radius:3px;}
+.bubble.sys{font-size:11px;color:var(--cream4);font-family:'Courier New',monospace;background:none;max-width:100%;padding:2px 0;}
+.mtime{font-size:11px;color:var(--cream4);margin-top:3px;padding:0 4px;}
+.typing{background:var(--card);border:1px solid var(--border);border-radius:16px;border-bottom-left-radius:3px;padding:12px 16px;}
+.dots{display:flex;gap:5px;}
+.dots i{display:block;width:7px;height:7px;border-radius:50%;background:var(--cream3);animation:db 1.4s infinite ease-in-out;font-style:normal;}
+.dots i:nth-child(2){animation-delay:.2s;}
+.dots i:nth-child(3){animation-delay:.4s;}
+@keyframes db{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+#quick{display:flex;gap:6px;padding:8px 14px 4px;overflow-x:auto;flex-shrink:0;}
+#quick::-webkit-scrollbar{display:none;}
+.qa{white-space:nowrap;font-size:12px;padding:7px 13px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--cream3);cursor:pointer;font-family:var(--font-body);transition:all .15s;}
+.qa:active{background:var(--card2);transform:scale(.97);}
+
+#ibar{padding:10px 12px;border-top:1px solid var(--border);background:var(--black);display:flex;gap:8px;align-items:flex-end;flex-shrink:0;}
+#inp{flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border2);border-radius:22px;color:var(--cream);font-family:var(--font-body);font-size:14px;resize:none;line-height:1.4;max-height:90px;outline:none;}
+#inp:focus{border-color:var(--cream2);}
+#inp::placeholder{color:var(--cream4);}
+#sendbtn{width:42px;height:42px;border-radius:50%;background:var(--cream);border:none;color:var(--black);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s;}
+#sendbtn:active{transform:scale(.9);}
+#sendbtn:disabled{opacity:.3;cursor:not-allowed;}
+
+/* CALENDAR */
+.sec{font-size:10px;font-weight:600;color:var(--cream3);text-transform:uppercase;letter-spacing:.12em;margin:12px 0 8px;font-family:var(--font-sub);}
+.cd{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.cd.today{border-left:3px solid var(--cream2);border-radius:0 10px 10px 0;}
+.ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.cn{font-size:14px;font-weight:600;font-family:var(--font-h);color:var(--cream);letter-spacing:.04em;}
+.cdate{font-size:11px;color:var(--cream3);}
+.workout-card{background:var(--card2);border-radius:8px;padding:8px 10px;}
+.wc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.wc-name{font-size:13px;font-weight:500;color:var(--cream);}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.06em;flex-shrink:0;margin-left:6px;font-family:var(--font-sub);}
+.bz2{background:rgba(76,175,125,.15);color:var(--green);}
+.brec{background:rgba(58,152,152,.15);color:var(--teal);}
+.bkey{background:rgba(232,224,204,.1);color:var(--cream);}
+.wv{height:44px;border-radius:6px;overflow:hidden;display:flex;align-items:flex-end;gap:1px;padding:0 2px 2px;}
+.wv-bar{border-radius:2px 2px 0 0;flex-shrink:0;}
+.wv-label{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;}
+.wvl{font-size:10px;color:var(--cream4);display:flex;align-items:center;gap:3px;}
+.wvl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.wc-stats{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
+.wcs{font-size:11px;color:var(--cream3);}
+.wcs b{color:var(--cream2);font-weight:500;}
+.crest{font-size:12px;color:var(--cream4);font-style:italic;padding:2px 0;}
+.cta{width:100%;margin-top:10px;padding:13px;background:none;border:1px solid var(--border2);border-radius:10px;color:var(--cream3);font-size:13px;font-family:var(--font-body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s;}
+.cta:active{background:var(--card);}
+
+/* DATA */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+.sl{font-size:10px;color:var(--cream3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--font-sub);}
+.sv{font-size:26px;font-weight:700;font-family:var(--font-h);color:var(--cream);line-height:1;letter-spacing:.02em;}
+.sd{font-size:11px;color:var(--cream4);margin-top:3px;}
+.bar{height:2px;background:var(--border);border-radius:1px;margin-top:10px;overflow:hidden;}
+.bfill{height:100%;border-radius:1px;transition:width .8s;}
+.tsb-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-top:4px;}
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+.chart-title{font-size:10px;color:var(--cream3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-family:var(--font-sub);}
+.chart-legend{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+.cl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--cream3);}
+.cl-line{width:16px;height:2px;border-radius:1px;}
+.ar{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.ar:last-child{border-bottom:none;}
+.ai{width:34px;height:34px;border-radius:6px;background:rgba(232,224,204,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.an{font-size:13px;font-weight:500;color:var(--cream);}
+.am{font-size:11px;color:var(--cream3);margin-top:1px;}
+.atss{margin-left:auto;font-family:var(--font-h);font-size:13px;color:var(--cream2);background:rgba(232,224,204,.08);padding:3px 8px;border-radius:5px;flex-shrink:0;letter-spacing:.04em;}
+.pbar-wrap{margin-top:5px;}
+.pbar-bg{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:2px;}
+.pbar-label{display:flex;justify-content:space-between;font-size:10px;color:var(--cream4);margin-bottom:2px;}
+
+/* WEIGHT PROGRESS */
+.weight-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.wg-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.wg-title{font-size:10px;color:var(--cream3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-sub);}
+.wg-pct{font-family:var(--font-h);font-size:22px;color:var(--green);}
+.wg-nums{display:flex;justify-content:space-between;font-size:11px;color:var(--cream4);margin-bottom:6px;}
+.wg-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.wg-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--amber));transition:width .8s;}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="screen-setup">
+  <div class="s-logo">OB<sup>2</sup>G</div>
+  <div class="s-tag">The Old Big Bearded Guy · Coach IA</div>
+  <div class="s-card">
+    <div class="s-lbl">Clé API Intervals.icu</div>
+    <input class="s-inp" type="password" id="key-inp" placeholder="Colle ta clé ici..." autocomplete="off" autocorrect="off" spellcheck="false"/>
+    <div class="s-hint">Où la trouver : <b>intervals.icu</b> → avatar → Settings → bas de page → <b>Developer Settings</b></div>
+    <button class="s-btn" id="conn-btn" onclick="connect()">CONNECTER</button>
+    <div class="s-err" id="setup-err">Clé invalide. Vérifie et réessaie.</div>
+  </div>
+</div>
+
+<!-- PROFIL MODAL -->
+<div class="modal" id="modal-profil">
+  <div class="m-card">
+    <div class="m-title">MON PROFIL</div>
+    <div class="m-sub">Tes données personnelles · utilisées par le coach</div>
+
+    <div class="m-section">Identité</div>
+    <div class="m-row">
+      <div class="m-field">
+        <div class="m-lbl">Prénom</div>
+        <input class="m-inp" type="text" id="p-prenom" placeholder="Fabien"/>
+      </div>
+      <div class="m-field">
+        <div class="m-lbl">Âge</div>
+        <input class="m-inp" type="number" id="p-age" placeholder="50" min="18" max="99"/>
+      </div>
+    </div>
+    <div class="m-row">
+      <div class="m-field">
+        <div class="m-lbl">Taille (cm)</div>
+        <input class="m-inp" type="number" id="p-taille" placeholder="180" min="140" max="220"/>
+      </div>
+      <div class="m-field">
+        <div class="m-lbl">Poids actuel (kg)</div>
+        <input class="m-inp" type="number" id="p-poids" placeholder="95" min="40" max="200" oninput="updateWkg()"/>
+      </div>
+    </div>
+    <div class="m-row">
+      <div class="m-field">
+        <div class="m-lbl">Poids cible (kg)</div>
+        <input class="m-inp" type="number" id="p-cible" placeholder="75" min="40" max="200"/>
+      </div>
+      <div class="m-field">
+        <div class="m-lbl">W/kg actuel</div>
+        <div class="m-inp" id="p-wkg" style="background:var(--black);cursor:default;color:var(--green);font-size:18px;font-family:var(--font-h);text-align:center;letter-spacing:.04em;padding:9px 12px;">—</div>
+      </div>
+    </div>
+
+    <div class="m-section">Cardio & Puissance</div>
+    <div class="m-row">
+      <div class="m-field">
+        <div class="m-lbl">FC max (bpm)</div>
+        <input class="m-inp mono" type="number" id="p-fcmax" placeholder="165" min="120" max="220" oninput="updateZones()"/>
+      </div>
+      <div class="m-field">
+        <div class="m-lbl">FC repos (bpm)</div>
+        <input class="m-inp mono" type="number" id="p-fcrep" placeholder="55" min="30" max="100" oninput="updateZones()"/>
+      </div>
+    </div>
+    <div class="m-row full">
+      <div class="m-field">
+        <div class="m-lbl">FTP (watts)</div>
+        <input class="m-inp mono" type="number" id="p-ftp" placeholder="160" min="50" max="500" oninput="updateZones();updateWkg()"/>
+      </div>
+    </div>
+
+    <div class="m-section">Zones calculées</div>
+    <div class="m-zones" id="p-zones">
+      <div style="text-align:center;color:var(--cream4);font-size:12px;padding:8px">Entre ta FTP et FC max pour calculer</div>
+    </div>
+
+    <div class="m-btns">
+      <button class="m-cancel" onclick="closeModal('modal-profil')">Annuler</button>
+      <button class="m-save" onclick="saveProfil()">SAUVEGARDER</button>
+    </div>
+  </div>
+</div>
+
+<!-- FTP MODAL (raccourci) -->
+<div class="modal" id="modal-ftp">
+  <div class="m-card">
+    <div class="m-title">FTP RAPIDE</div>
+    <div class="m-sub">Modifie uniquement ta puissance seuil</div>
+    <div class="m-row full">
+      <div class="m-field">
+        <div class="m-lbl">FTP (watts)</div>
+        <input class="m-inp mono" type="number" id="ftp-quick" placeholder="160" min="50" max="500" oninput="updateQuickZones()"/>
+      </div>
+    </div>
+    <div class="m-zones" id="ftp-quick-zones"></div>
+    <div class="m-btns">
+      <button class="m-cancel" onclick="closeModal('modal-ftp')">Annuler</button>
+      <button class="m-save" onclick="saveFtpQuick()">SAUVEGARDER</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="screen-app">
+  <div id="hdr">
+    <div class="h-logo">OB<sup>2</sup>G</div>
+    <div class="h-sep"></div>
+    <div class="h-name" id="hdr-name">Coach IA</div>
+    <div class="h-dot"></div>
+    <div class="h-ftp">
+      <span class="h-fv" id="ftp-display">160W</span>
+      <button class="h-btn" onclick="openModal('modal-ftp')" title="Modifier FTP">⚡</button>
+      <button class="h-btn" onclick="openModal('modal-profil')" title="Mon profil">👤</button>
+    </div>
+  </div>
+
+  <div id="profile-bar"><!-- populated by JS --></div>
+
+  <div id="tabs">
+    <button class="tab active" onclick="goTab('chat')">💬 Coach</button>
+    <button class="tab" onclick="goTab('calendar')">📅 Calendrier</button>
+    <button class="tab" onclick="goTab('data')">📊 Données</button>
+  </div>
+
+  <div id="panels">
+    <div class="panel active" id="panel-chat">
+      <div id="msgs"></div>
+      <div id="quick">
+        <button class="qa" onclick="qs('Je suis fatigué ce soir, adapte ma séance')">😴 Fatigué</button>
+        <button class="qa" onclick="qs('Semaine très chargée, adapte le programme')">💼 Chargé</button>
+        <button class="qa" onclick="qs('Forme au top, pas de signe de migraine !')">✅ En forme</button>
+        <button class="qa" onclick="qs('Analyse mes données et adapte mon entraînement')">📊 Mes stats</button>
+        <button class="qa" onclick="qs('Crée ma séance pour demain')">➕ Séance</button>
+        <button class="qa" onclick="qs('Que manger ce soir avant ma séance de demain ?')">🍽️ Nutrition</button>
+      </div>
+      <div id="ibar">
+        <textarea id="inp" placeholder="Parle à ton coach..." rows="1" oninput="resize(this)" onkeydown="onkey(event)"></textarea>
+        <button id="sendbtn" onclick="send()">↑</button>
+      </div>
+    </div>
+    <div class="panel" id="panel-calendar">
+      <div class="scroll" id="cal-body"><div style="text-align:center;padding:40px;color:var(--cream4)">Chargement...</div></div>
+    </div>
+    <div class="panel" id="panel-data">
+      <div class="scroll" id="data-body"><div style="text-align:center;padding:40px;color:var(--cream4)">Chargement...</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── STATE ──
+let apiKey='',ftp=160;
+let athlete=null,activities=[],events=[],history=[],busy=false,ctlChart=null;
+const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MONTHS=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+const ZCOLORS={z1:'#3a6ea8',z2:'#4caf7d',z3:'#c8c22a',z4:'#c8922a',z5:'#c84040'};
+const ZH={z1:.35,z2:.65,z3:.80,z4:.92,z5:1.0};
+const PROXY='https://ob2g-proxy.onrender.com';
+
+// ── PROFIL ──
+function defaultProfil(){
+  return {prenom:'',age:'',taille:'',poids:'',cible:'',fcmax:165,fcrep:55,ftp:160};
+}
+function loadProfil(){
+  try{return JSON.parse(localStorage.getItem('ob2g_profil'))||defaultProfil();}
+  catch(e){return defaultProfil();}
+}
+function saveProfil(){
+  const p={
+    prenom:document.getElementById('p-prenom').value.trim(),
+    age:parseInt(document.getElementById('p-age').value)||'',
+    taille:parseInt(document.getElementById('p-taille').value)||'',
+    poids:parseFloat(document.getElementById('p-poids').value)||'',
+    cible:parseFloat(document.getElementById('p-cible').value)||'',
+    fcmax:parseInt(document.getElementById('p-fcmax').value)||165,
+    fcrep:parseInt(document.getElementById('p-fcrep').value)||55,
+    ftp:parseInt(document.getElementById('p-ftp').value)||160,
+  };
+  localStorage.setItem('ob2g_profil',JSON.stringify(p));
+  ftp=p.ftp;
+  updateFtpDisplay();
+  renderProfileBar();
+  closeModal('modal-profil');
+  addMsg('coach','Profil mis à jour ✓ — FTP '+p.ftp+'W · Z2 : '+z2min()+'–'+z2max()+'W · '+(p.poids&&p.cible?'Objectif : -'+(p.poids-p.cible).toFixed(1)+'kg':''));
+}
+
+function openProfilModal(){
+  const p=loadProfil();
+  document.getElementById('p-prenom').value=p.prenom||'';
+  document.getElementById('p-age').value=p.age||'';
+  document.getElementById('p-taille').value=p.taille||'';
+  document.getElementById('p-poids').value=p.poids||'';
+  document.getElementById('p-cible').value=p.cible||'';
+  document.getElementById('p-fcmax').value=p.fcmax||165;
+  document.getElementById('p-fcrep').value=p.fcrep||55;
+  document.getElementById('p-ftp').value=p.ftp||ftp;
+  updateZones();updateWkg();
+  openModal('modal-profil');
+}
+
+
+function updateZones(){
+  const ftpV=parseInt(document.getElementById('p-ftp').value)||ftp;
+  const fcmax=parseInt(document.getElementById('p-fcmax').value)||165;
+  const fcrep=parseInt(document.getElementById('p-fcrep').value)||55;
+  const res=fcmax-fcrep;
+  const zones=[
+    {n:'Z1  Récupération',color:'#3a6ea8',pw:Math.round(ftpV*.45)+'–'+Math.round(ftpV*.55)+'W',hr:Math.round(fcrep+res*.5)+' – '+Math.round(fcrep+res*.6)+'bpm',accent:false},
+    {n:'Z2  Endurance',color:'#4caf7d',pw:Math.round(ftpV*.56)+'–'+Math.round(ftpV*.75)+'W',hr:Math.round(fcrep+res*.6)+' – '+Math.round(fcrep+res*.7)+'bpm',accent:true},
+    {n:'Z3  Tempo',color:'#c8c22a',pw:Math.round(ftpV*.76)+'–'+Math.round(ftpV*.87)+'W',hr:Math.round(fcrep+res*.7)+' – '+Math.round(fcrep+res*.8)+'bpm',accent:false},
+    {n:'Z4  Seuil',color:'#c8922a',pw:Math.round(ftpV*.88)+'–'+Math.round(ftpV*.94)+'W',hr:Math.round(fcrep+res*.8)+' – '+Math.round(fcrep+res*.9)+'bpm',accent:false},
+    {n:'Z5  VO2Max',color:'#c84040',pw:'>'+Math.round(ftpV*.95)+'W',hr:'>'+Math.round(fcrep+res*.9)+'bpm',accent:false},
+  ];
+  document.getElementById('p-zones').innerHTML=zones.map(z=>
+    `<div class="fz-row">
+      <span class="fz-n"><span class="fz-dot" style="background:${z.color}"></span>${z.n}</span>
+      <span class="fz-v${z.accent?' fz-accent':''}" style="font-size:11px">${z.pw} · ${z.hr}</span>
+    </div>`
+  ).join('');
+}
+
+function updateQuickZones(){
+  const v=parseInt(document.getElementById('ftp-quick').value)||ftp;
+  const zones=[
+    {n:'Z1',color:'#3a6ea8',pw:Math.round(v*.45)+'–'+Math.round(v*.55)+'W'},
+    {n:'Z2',color:'#4caf7d',pw:Math.round(v*.56)+'–'+Math.round(v*.75)+'W',accent:true},
+    {n:'Z3',color:'#c8c22a',pw:Math.round(v*.76)+'–'+Math.round(v*.87)+'W'},
+    {n:'Z4',color:'#c8922a',pw:Math.round(v*.88)+'–'+Math.round(v*.94)+'W'},
+    {n:'Z5',color:'#c84040',pw:'>'+Math.round(v*.95)+'W'},
+  ];
+  document.getElementById('ftp-quick-zones').innerHTML=zones.map(z=>
+    `<div class="fz-row"><span class="fz-n"><span class="fz-dot" style="background:${z.color}"></span>${z.n}</span><span class="fz-v${z.accent?' fz-accent':''}">${z.pw}</span></div>`
+  ).join('');
+}
+
+function saveFtpQuick(){
+  const v=parseInt(document.getElementById('ftp-quick').value);
+  if(!v||v<50||v>500)return;
+  const p=loadProfil();p.ftp=v;
+  localStorage.setItem('ob2g_profil',JSON.stringify(p));
+  ftp=v;localStorage.setItem('ob2g_ftp',v);
+  updateFtpDisplay();renderProfileBar();closeModal('modal-ftp');
+  addMsg('coach','FTP mise à jour à '+v+'W. Z2 : '+z2min()+'–'+z2max()+'W ✓');
+}
+
+function renderProfileBar(){
+  const p=loadProfil();
+  const el=document.getElementById('profile-bar');
+  if(!p.poids&&!p.age){el.style.display='none';return;}
+  el.style.display='flex';
+  let h='';
+  if(p.prenom)h+=`<div class="pb-item"><div class="pb-val" style="font-family:var(--font-h);font-size:14px">${p.prenom.toUpperCase()}</div><div class="pb-lbl">Rider</div></div><div class="pb-sep"></div>`;
+  if(p.poids)h+=`<div class="pb-item"><div class="pb-val">${p.poids}<span style="font-size:11px;color:var(--cream4)">kg</span></div><div class="pb-lbl">Poids</div></div>`;
+  if(p.cible&&p.poids){
+    const reste=(p.poids-p.cible).toFixed(1);
+    const pct=Math.max(0,Math.min(100,((p.poids-p.cible)/(p.poids-p.cible))*0));
+    h+=`<div class="pb-sep"></div><div class="pb-item"><div class="pb-val" style="color:var(--amber)">-${reste}<span style="font-size:11px">kg</span></div><div class="pb-lbl">À perdre</div></div>`;
+  }
+  if(p.age)h+=`<div class="pb-sep"></div><div class="pb-item"><div class="pb-val">${p.age}<span style="font-size:11px;color:var(--cream4)">ans</span></div><div class="pb-lbl">Âge</div></div>`;
+  if(p.fcmax)h+=`<div class="pb-sep"></div><div class="pb-item"><div class="pb-val">${p.fcmax}<span style="font-size:11px;color:var(--cream4)">bpm</span></div><div class="pb-lbl">FC max</div></div>`;
+  el.innerHTML=h;
+}
+
+// ── MODALS ──
+function openModal(id){
+  if(id==='modal-profil')openProfilModal();
+  else if(id==='modal-ftp'){
+    document.getElementById('ftp-quick').value=ftp;
+    updateQuickZones();
+    document.getElementById(id).classList.add('open');
+  } else document.getElementById(id).classList.add('open');
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── API ──
+function fmtDate(d){return d.toISOString().split('T')[0];}
+function todayStr(){return fmtDate(new Date());}
+function nowT(){return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function z2min(){return Math.round(ftp*.56);}
+function z2max(){return Math.round(ftp*.75);}
+function updateFtpDisplay(){document.getElementById('ftp-display').textContent=ftp+'W';}
+
+async function icuFetch(path,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json','x-api-key':apiKey}};
+  if(body)opts.body=JSON.stringify(body);
+  try{
+    const r=await fetch(PROXY+'/api'+path,opts);
+    if(!r.ok)return null;
+    if(method==='DELETE')return true;
+    return r.json();
+  }catch(e){return null;}
+}
+
+async function connect(){
+  const k=document.getElementById('key-inp').value.trim();
+  if(!k)return;
+  const btn=document.getElementById('conn-btn');
+  btn.disabled=true;btn.textContent='CONNEXION...';
+  document.getElementById('setup-err').style.display='none';
+  apiKey=k;
+  const r=await icuFetch('');
+  if(!r){
+    apiKey='';
+    const errEl=document.getElementById('setup-err');
+    errEl.style.display='block';
+    errEl.textContent='Connexion échouée. Proxy en démarrage ? Réessaie dans 30s.';
+    btn.disabled=false;btn.textContent='RÉESSAYER';return;
+  }
+  athlete=r;localStorage.setItem('ob2g_key',k);launch();
+}
+
+async function launch(){
+  const p=loadProfil();
+  ftp=p.ftp||parseInt(localStorage.getItem('ob2g_ftp')||'160');
+  document.getElementById('screen-setup').style.display='none';
+  document.getElementById('screen-app').style.display='flex';
+  updateFtpDisplay();renderProfileBar();
+  const name=p.prenom||(athlete.name||'').split(' ')[0]||'Rider';
+  document.getElementById('hdr-name').textContent=(athlete.name||'Mon compte').toUpperCase();
+  if(athlete.icu_ftp&&!p.ftp){ftp=athlete.icu_ftp;updateFtpDisplay();}
+  const n=new Date(),old=fmtDate(new Date(n-21*864e5)),nw=fmtDate(new Date(n.getTime()+14*864e5));
+  const acts=await icuFetch('/activities?oldest='+old+'&newest='+nw+'&limit=10');
+  if(acts&&Array.isArray(acts))activities=acts;
+  const evs=await icuFetch('/events?oldest='+old+'&newest='+nw);
+  if(evs&&Array.isArray(evs))events=evs;
+  renderCalendar();renderData();
+  const planned=events.filter(e=>(e.start_date_local||'').split('T')[0]>=todayStr()&&e.category==='WORKOUT').length;
+  const profilOk=p.poids&&p.age;
+  addMsg('coach','Salut '+name+' 🤙 Connecté. '+(planned>0?planned+' séance(s) planifiée(s). ':'')+'FTP '+ftp+'W.'+(profilOk?'':' 👉 Complète ton profil (bouton 👤) pour que je puisse vraiment t\'aider !'));
+}
+
+// ── WORKOUT VIZ ──
+function parseWorkoutBlocks(desc){
+  if(!desc)return null;
+  const blocks=[];
+  desc.split('\n').forEach(line=>{
+    const m=line.match(/(\d+)m\s+(\d+)%/);
+    if(m){
+      const pct=parseInt(m[2]);
+      let zone='z2';
+      if(pct<56)zone='z1';else if(pct<76)zone='z2';else if(pct<88)zone='z3';else if(pct<95)zone='z4';else zone='z5';
+      blocks.push({dur:parseInt(m[1]),zone});
+    }
+  });
+  return blocks.length?blocks:null;
+}
+function guessBlocks(name,duration){
+  const n=(name||'').toLowerCase(),d=duration||60;
+  if(n.includes('recup')||n.includes('récup'))return [{zone:'z1',dur:d}];
+  if(n.includes('longue')||n.includes('long'))return [{zone:'z1',dur:Math.round(d*.12)},{zone:'z2',dur:Math.round(d*.76)},{zone:'z1',dur:Math.round(d*.12)}];
+  return [{zone:'z1',dur:Math.round(d*.13)},{zone:'z2',dur:Math.round(d*.74)},{zone:'z1',dur:Math.round(d*.13)}];
+}
+function drawWorkoutViz(id,blocks){
+  const el=document.getElementById(id);if(!el)return;el.innerHTML='';
+  const total=blocks.reduce((s,b)=>s+b.dur,0);
+  blocks.forEach(b=>{
+    const bar=document.createElement('div');
+    bar.className='wv-bar';
+    bar.style.cssText=`width:${(b.dur/total*100).toFixed(1)}%;height:${Math.round(ZH[b.zone]*40)}px;background:${ZCOLORS[b.zone]};opacity:.85;`;
+    el.appendChild(bar);
+  });
+}
+function getZoneLabels(blocks){
+  const seen=new Set();
+  return blocks.filter(b=>{if(seen.has(b.zone))return false;seen.add(b.zone);return true;})
+    .map(b=>`<span class="wvl"><span class="wvl-dot" style="background:${ZCOLORS[b.zone]}"></span>${b.zone.toUpperCase()}</span>`).join('');
+}
+
+// ── CALENDAR ──
+function renderCalendar(){
+  const el=document.getElementById('cal-body');
+  const n=new Date();
+  let h='<div class="sec">7 prochains jours</div>';
+  for(let i=0;i<7;i++){
+    const d=new Date(n);d.setDate(n.getDate()+i);
+    const ds=fmtDate(d);
+    const lbl=i===0?'AUJOURD\'HUI':i===1?'DEMAIN':DAYS[d.getDay()].toUpperCase();
+    const pl=events.filter(e=>(e.start_date_local||'').split('T')[0]===ds&&e.category==='WORKOUT');
+    h+=`<div class="cd${i===0?' today':''}"><div class="ch"><span class="cn">${lbl}</span><span class="cdate">${d.getDate()} ${MONTHS[d.getMonth()]}</span></div>`;
+    if(pl.length){
+      pl.forEach((ev,ei)=>{
+        const dur=ev.moving_time?Math.round(ev.moving_time/60):null;
+        const nm=(ev.name||'').toLowerCase();
+        const badge=nm.includes('longue')||nm.includes('j7')?'<span class="badge bkey">CLÉ</span>':nm.includes('recup')?'<span class="badge brec">RÉCUP</span>':'<span class="badge bz2">Z2</span>';
+        const vid='wv-'+ds.replace(/-/g,'')+'-'+ei;
+        const blocks=parseWorkoutBlocks(ev.description)||guessBlocks(ev.name,dur);
+        const tss=ev.icu_training_load?Math.round(ev.icu_training_load):null;
+        h+=`<div class="workout-card">
+          <div class="wc-top"><span class="wc-name">${ev.name}</span>${badge}</div>
+          <div class="wv" id="${vid}"></div>
+          <div class="wv-label">${getZoneLabels(blocks)}</div>
+          <div class="wc-stats">
+            ${dur?`<span class="wcs"><b>${dur} min</b></span>`:''}
+            ${tss?`<span class="wcs"><b>${tss} TSS</b></span>`:''}
+            <span class="wcs"><b>${z2min()}–${z2max()}W</b></span>
+          </div>
+        </div>`;
+      });
+    }else{h+='<div class="crest">— repos</div>';}
+    h+='</div>';
+  }
+  h+='<button class="cta" onclick="qs(\'Adapte mon programme pour les 7 prochains jours\')">🔄 Demander au coach d\'adapter ↗</button>';
+  el.innerHTML=h;
+  setTimeout(()=>{
+    for(let i=0;i<7;i++){
+      const d=new Date(n);d.setDate(n.getDate()+i);
+      const ds=fmtDate(d);
+      events.filter(e=>(e.start_date_local||'').split('T')[0]===ds&&e.category==='WORKOUT')
+        .forEach((ev,ei)=>{
+          const dur=ev.moving_time?Math.round(ev.moving_time/60):null;
+          drawWorkoutViz('wv-'+ds.replace(/-/g,'')+'-'+ei,parseWorkoutBlocks(ev.description)||guessBlocks(ev.name,dur));
+        });
+    }
+  },50);
+}
+
+// ── DATA ──
+function renderData(){
+  const el=document.getElementById('data-body');
+  const p=loadProfil();
+  const ctl=Math.round(athlete?.icu_ctl||0),atl=Math.round(athlete?.icu_atl||0),tsb=ctl-atl;
+  const tsbC=tsb>5?'var(--green)':tsb<-20?'var(--red)':'var(--amber)';
+  const tsbL=tsb>5?'Frais':tsb<-20?'Fatigué':'Normal';
+  const tsbBg=tsb>5?'rgba(76,175,125,.15)':tsb<-20?'rgba(200,64,64,.15)':'rgba(200,146,42,.15)';
+
+  let h='';
+
+  // Progression poids si profil renseigné
+  if(p.poids&&p.cible&&p.poids>p.cible){
+    const total=p.poids-p.cible;
+    const pct=Math.max(0,Math.min(100,0)); // sera mis à jour avec données réelles
+    h+=`<div class="weight-card">
+      <div class="wg-header">
+        <div>
+          <div class="wg-title">Objectif poids</div>
+          <div style="font-size:11px;color:var(--cream4);margin-top:2px">${p.poids}kg → ${p.cible}kg</div>
+        </div>
+        <div class="wg-pct">-${total.toFixed(1)}kg</div>
+      </div>
+      <div class="wg-nums"><span>Départ : ${p.poids}kg</span><span>Cible : ${p.cible}kg</span></div>
+      <div class="wg-bar"><div class="wg-fill" style="width:2%"></div></div>
+    </div>`;
+  }
+
+  h+=`<div class="sg">
+    <div class="sc"><div class="sl">Fitness CTL</div><div class="sv">${ctl}</div><div class="sd">Forme de fond</div><div class="bar"><div class="bfill" style="width:${Math.min(ctl,100)}%;background:var(--cream2)"></div></div></div>
+    <div class="sc"><div class="sl">Fatigue ATL</div><div class="sv">${atl}</div><div class="sd">Charge récente</div><div class="bar"><div class="bfill" style="width:${Math.min(atl,100)}%;background:var(--amber)"></div></div></div>
+    <div class="sc"><div class="sl">Forme TSB</div><div class="sv" style="color:${tsbC}">${tsb>=0?'+':''}${tsb}</div><div class="tsb-badge" style="background:${tsbBg};color:${tsbC}">${tsbL}</div></div>
+    <div class="sc"><div class="sl">FTP</div><div class="sv">${ftp}<span style="font-size:12px;color:var(--cream4)">W</span></div><div class="sd">${p.age?'W/kg : '+(ftp/(p.poids||80)).toFixed(2):'Phase 1'}</div></div>
+  </div>`;
+
+  h+=`<div class="chart-wrap">
+    <div class="chart-title">Fitness · Fatigue · Forme — 6 semaines</div>
+    <div class="chart-legend">
+      <span class="cl"><span class="cl-line" style="background:var(--cream2)"></span>CTL</span>
+      <span class="cl"><span class="cl-line" style="background:var(--amber)"></span>ATL</span>
+      <span class="cl"><span class="cl-line" style="background:var(--teal)"></span>TSB</span>
+    </div>
+    <div style="position:relative;height:110px;"><canvas id="ctlChart"></canvas></div>
+  </div>`;
+
+  if(activities.length){
+    h+='<div class="sec">Dernières sorties</div><div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px 12px;">';
+    activities.slice(0,6).forEach(a=>{
+      const dur=Math.round((a.moving_time||0)/60);
+      const date=(a.start_date_local||'').split('T')[0];
+      const w=a.average_watts?Math.round(a.average_watts):null;
+      const hr=a.average_heartrate?Math.round(a.average_heartrate):null;
+      const tss=a.icu_training_load?Math.round(a.icu_training_load):null;
+      const pct=w?Math.round(w/ftp*100):null;
+      let zone='z1';
+      if(pct){if(pct>=95)zone='z5';else if(pct>=88)zone='z4';else if(pct>=76)zone='z3';else if(pct>=56)zone='z2';}
+      const meta=[date,dur+'min',w?w+'W':'',hr?hr+'bpm':''].filter(Boolean).join(' · ');
+      h+=`<div class="ar"><div class="ai">🚴</div><div style="flex:1"><div class="an">${a.name||'Sortie'}</div><div class="am">${meta}</div>`;
+      if(w&&pct)h+=`<div class="pbar-wrap"><div class="pbar-label"><span>${w}W moy.</span><span>${pct}% FTP · ${zone.toUpperCase()}</span></div><div class="pbar-bg"><div class="pbar-fill" style="width:${Math.min(pct,100)}%;background:${ZCOLORS[zone]}"></div></div></div>`;
+      h+=`</div>${tss?`<div class="atss">${tss} TSS</div>`:''}</div>`;
+    });
+    h+='</div>';
+  }else{
+    h+='<div class="sec">Activités</div><div style="text-align:center;padding:20px;color:var(--cream4);font-size:13px">Aucune activité récente</div>';
+  }
+  h+='<button class="cta" onclick="qs(\'Analyse mes données et adapte mon entraînement\')">🧠 Analyser avec le coach ↗</button>';
+  el.innerHTML=h;
+  setTimeout(()=>renderCtlChart(ctl,atl),50);
+}
+
+function renderCtlChart(ctl,atl){
+  const canvas=document.getElementById('ctlChart');if(!canvas)return;
+  if(ctlChart){ctlChart.destroy();ctlChart=null;}
+  const weeks=['S-5','S-4','S-3','S-2','S-1','Auj'];
+  const ctlData=[Math.max(0,ctl-10),Math.max(0,ctl-8),Math.max(0,ctl-5),Math.max(0,ctl-3),Math.max(0,ctl-1),ctl];
+  const atlData=[Math.max(0,atl-8),Math.max(0,atl+4),Math.max(0,atl-6),Math.max(0,atl+6),Math.max(0,atl-2),atl];
+  const tsbData=ctlData.map((c,i)=>c-atlData[i]);
+  ctlChart=new Chart(canvas,{type:'line',data:{labels:weeks,datasets:[
+    {label:'CTL',data:ctlData,borderColor:'#c8bfa8',backgroundColor:'rgba(200,191,168,.08)',borderWidth:2,tension:.4,pointRadius:3,pointBackgroundColor:'#c8bfa8',fill:true},
+    {label:'ATL',data:atlData,borderColor:'#c8922a',backgroundColor:'rgba(200,146,42,.06)',borderWidth:2,tension:.4,pointRadius:3,pointBackgroundColor:'#c8922a',fill:true},
+    {label:'TSB',data:tsbData,borderColor:'#3a9898',borderWidth:1.5,borderDash:[4,3],tension:.4,pointRadius:2,pointBackgroundColor:'#3a9898',fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#202020',titleColor:'#e8e0cc',bodyColor:'#8a8070',borderColor:'rgba(232,224,204,0.18)',borderWidth:1}},
+    scales:{x:{grid:{color:'rgba(232,224,204,0.06)'},ticks:{color:'#504840',font:{size:10}}},y:{grid:{color:'rgba(232,224,204,0.06)'},ticks:{color:'#504840',font:{size:10}},min:-20,max:Math.max(atl,ctl)+10}}
+  }});
+}
+
+// ── CHAT ──
+function buildCtx(){
+  const p=loadProfil();
+  let c='PROFIL ATHLÈTE COMPLET:\n';
+  if(p.prenom)c+=`Prénom: ${p.prenom}\n`;
+  if(p.age)c+=`Âge: ${p.age} ans\n`;
+  if(p.taille)c+=`Taille: ${p.taille} cm\n`;
+  if(p.poids)c+=`Poids actuel: ${p.poids} kg\n`;
+  if(p.cible)c+=`Poids cible: ${p.cible} kg (à perdre: ${(p.poids-p.cible).toFixed(1)}kg)\n`;
+  if(p.poids&&ftp)c+=`W/kg: ${(ftp/p.poids).toFixed(2)}\n`;
+  if(p.fcmax)c+=`FC max: ${p.fcmax} bpm | FC repos: ${p.fcrep} bpm\n`;
+  c+=`FTP: ${ftp}W | Z2: ${z2min()}–${z2max()}W\n`;
+  if(athlete)c+=`CTL: ${Math.round(athlete.icu_ctl||0)} | ATL: ${Math.round(athlete.icu_atl||0)} | TSB: ${Math.round((athlete.icu_ctl||0)-(athlete.icu_atl||0))}\n`;
+  c+=`Aujourd'hui: ${todayStr()}\n`;
+  if(activities.length){
+    c+='\nActivités récentes:\n';
+    activities.slice(0,5).forEach(a=>{
+      c+=`- ${(a.start_date_local||'').split('T')[0]}: ${a.name||'Sortie'} | ${Math.round((a.moving_time||0)/60)}min`;
+      if(a.average_watts)c+=` | ${Math.round(a.average_watts)}W`;
+      if(a.average_heartrate)c+=` | ${Math.round(a.average_heartrate)}bpm`;
+      if(a.icu_training_load)c+=` | ${Math.round(a.icu_training_load)}TSS`;
+      c+='\n';
+    });
+  }
+  const pl=events.filter(e=>(e.start_date_local||'').split('T')[0]>=todayStr()&&e.category==='WORKOUT');
+  if(pl.length){c+='\nSéances planifiées:\n';pl.forEach(e=>c+=`- ID:${e.id} | ${(e.start_date_local||'').split('T')[0]}: ${e.name}\n`);}
+  return c;
+}
+
+const SYS=`Tu es le coach cycliste OB²G — The Old Big Bearded Guy. Expert, direct, impliqué, avec du caractère.
+
+RÈGLES ABSOLUES:
+- MIGRAINES D'EFFORT: Z2 max absolu | stop immédiat si signe précurseur — ne jamais dépasser
+- Phase 1 (sem 1-4): Z1-Z2 uniquement
+- Objectif poids: 1-1.5kg/mois max, jamais à jeun
+
+NUTRITION: 1/2 légumes + 1/4 protéines + 1/4 féculents | 1.6g prot/kg/j
+
+ACTIONS API:
+Créer séance: [ACTION:CREATE {"date":"YYYY-MM-DD","name":"Nom","duration":50,"desc":"- Xm XX% // desc"}]
+Supprimer: [ACTION:DELETE {"id":12345}]
+
+Réponds en français, concis et direct. Style: coach exigeant mais bienveillant.`;
+
+async function send(){
+  const el=document.getElementById('inp');
+  const text=el.value.trim();if(!text||busy)return;
+  el.value='';el.style.height='auto';
+  busy=true;document.getElementById('sendbtn').disabled=true;
+  addMsg('user',text);showTyping();history.push({role:'user',content:text});
+  try{
+    const res=await fetch(PROXY+'/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:SYS+'\n\n'+buildCtx(),messages:history})
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Erreur.';
+    history.push({role:'assistant',content:reply});
+    hideTyping();await processReply(reply);
+  }catch(e){hideTyping();addMsg('coach','Erreur réseau.');}
+  busy=false;document.getElementById('sendbtn').disabled=false;
+}
+
+async function processReply(reply){
+  const rx=/\[ACTION:(CREATE|DELETE)\s+({[^}]+})\]/g;
+  const clean=reply.replace(rx,'').trim();
+  if(clean)addMsg('coach',clean);
+  let m;rx.lastIndex=0;
+  while((m=rx.exec(reply))!==null){
+    const type=m[1];let p;try{p=JSON.parse(m[2]);}catch(e){continue;}
+    if(type==='CREATE'){
+      sysMsg('Création dans Intervals.icu...');
+      const r=await icuFetch('/events','POST',{category:'WORKOUT',start_date_local:p.date+'T00:00:00',type:'Ride',name:p.name,description:p.desc||`- ${p.duration||60}m 64% // Z2`,moving_time:(p.duration||60)*60});
+      if(r){sysMsg(`✓ "${p.name}" créée → sync Zwift auto`);await reload();}
+      else sysMsg('✗ Erreur création');
+    }else if(type==='DELETE'&&p.id){
+      sysMsg('Suppression...');
+      await icuFetch('/events/'+p.id,'DELETE');
+      sysMsg('✓ Supprimée');await reload();
+    }
+  }
+}
+
+async function reload(){
+  const n=new Date(),old=fmtDate(new Date(n-7*864e5)),nw=fmtDate(new Date(n.getTime()+14*864e5));
+  const ev=await icuFetch('/events?oldest='+old+'&newest='+nw);
+  if(ev&&Array.isArray(ev))events=ev;renderCalendar();
+}
+
+function addMsg(role,text){
+  const el=document.getElementById('msgs');
+  const row=document.createElement('div');row.className='mrow '+role;
+  const b=document.createElement('div');b.className='bubble '+role;b.textContent=text;
+  row.appendChild(b);
+  if(role!=='sys'){const t=document.createElement('div');t.className='mtime';t.textContent=nowT();row.appendChild(t);}
+  el.appendChild(row);el.scrollTop=el.scrollHeight;
+}
+function sysMsg(t){
+  const el=document.getElementById('msgs');
+  const row=document.createElement('div');row.className='mrow sys';
+  const b=document.createElement('div');b.className='bubble sys';b.textContent=t;
+  row.appendChild(b);el.appendChild(row);el.scrollTop=el.scrollHeight;
+}
+function showTyping(){
+  const el=document.getElementById('msgs');
+  const d=document.createElement('div');d.id='typing';d.className='mrow coach';
+  d.innerHTML='<div class="typing"><div class="dots"><i></i><i></i><i></i></div></div>';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function hideTyping(){const d=document.getElementById('typing');if(d)d.remove();}
+function goTab(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['chat','calendar','data'][i]===n));
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',['panel-chat','panel-calendar','panel-data'][i]==='panel-'+n));
+}
+function qs(t){document.getElementById('inp').value=t;send();}
+function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
+function onkey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+
+window.onload=()=>{
+  document.getElementById('profile-bar').style.display='none';
+  const saved=localStorage.getItem('ob2g_key');
+  if(saved){
+    document.getElementById('key-inp').value=saved;
+    connect();
+  }
+};
+</script>
+</body>
+</html>
