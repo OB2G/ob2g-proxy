@@ -1,31 +1,41 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Fichier de persistance des données santé
-const HEALTH_FILE = path.join('/tmp', 'ob2g_health.json');
+const JSONBIN_KEY = process.env.JSONBIN_KEY;
+const JSONBIN_ID = process.env.JSONBIN_ID;
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
-function readHealth() {
+async function readHealth() {
   try {
-    if (fs.existsSync(HEALTH_FILE)) {
-      return JSON.parse(fs.readFileSync(HEALTH_FILE, 'utf8'));
-    }
-  } catch(e) {}
-  return {};
+    const r = await fetch(JSONBIN_URL + '/latest', {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    const data = await r.json();
+    return data.record || {};
+  } catch(e) {
+    console.error('JSONBin read error:', e.message);
+    return {};
+  }
 }
 
-function writeHealth(data) {
+async function writeHealth(data) {
   try {
-    fs.writeFileSync(HEALTH_FILE, JSON.stringify(data), 'utf8');
+    await fetch(JSONBIN_URL, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_KEY
+      },
+      body: JSON.stringify(data)
+    });
   } catch(e) {
-    console.error('Erreur écriture health:', e.message);
+    console.error('JSONBin write error:', e.message);
   }
 }
 
@@ -34,9 +44,9 @@ app.all('/api*', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey) return res.status(401).json({ error: 'No API key' });
 
-  const path2 = req.path.replace('/api', '');
+  const path = req.path.replace('/api', '');
   const qs = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
-  const url = 'https://intervals.icu/api/v1/athlete/i552913' + path2 + qs;
+  const url = 'https://intervals.icu/api/v1/athlete/i552913' + path + qs;
 
   try {
     const opts = {
@@ -86,16 +96,14 @@ app.post('/claude', async (req, res) => {
 });
 
 // ── Réception données Apple Santé ──
-app.post('/health', (req, res) => {
+app.post('/health', async (req, res) => {
   try {
     const data = req.body;
     const today = new Date().toISOString().split('T')[0];
-    const existing = readHealth();
+    const existing = await readHealth();
     const parsed = { date: today };
 
-    // Format v2 Health Auto Export
     const metrics = data.data?.metrics || data.metrics || [];
-
     metrics.forEach(metric => {
       const name = (metric.name || metric.type || '').toLowerCase();
       const points = metric.data || metric.points || [];
@@ -103,37 +111,36 @@ app.post('/health', (req, res) => {
       const latest = points[points.length - 1];
       const val = latest.qty ?? latest.value ?? latest.Qty ?? 0;
 
-      if (name.includes('sleep'))             parsed.sleep_hours   = Math.round(val * 10) / 10;
-      else if (name.includes('resting_heart') || name.includes('resting heart')) parsed.resting_hr = Math.round(val);
-      else if (name.includes('heart_rate_variability') || name.includes('hrv'))  parsed.hrv        = Math.round(val);
-      else if (name.includes('systolic'))     parsed.systolic      = Math.round(val);
-      else if (name.includes('diastolic'))    parsed.diastolic     = Math.round(val);
-      else if (name.includes('step'))         parsed.steps         = Math.round(val);
-      else if (name.includes('body_mass') || name.includes('weight')) parsed.weight = Math.round(val * 10) / 10;
-      else if (name.includes('active_energy') || name.includes('active energy')) parsed.calories = Math.round(val);
+      if (name.includes('sleep'))                                                parsed.sleep_hours = Math.round(val * 10) / 10;
+      else if (name.includes('resting_heart') || name.includes('resting heart')) parsed.resting_hr  = Math.round(val);
+      else if (name.includes('heart_rate_variability') || name.includes('hrv'))  parsed.hrv         = Math.round(val);
+      else if (name.includes('systolic'))                                         parsed.systolic    = Math.round(val);
+      else if (name.includes('diastolic'))                                        parsed.diastolic   = Math.round(val);
+      else if (name.includes('step'))                                             parsed.steps       = Math.round(val);
+      else if (name.includes('body_mass') || name.includes('weight'))            parsed.weight      = Math.round(val * 10) / 10;
+      else if (name.includes('active_energy') || name.includes('active energy')) parsed.calories    = Math.round(val);
     });
 
-    // Fusionne avec les données existantes du jour
     const merged = existing.date === today ? { ...existing, ...parsed } : parsed;
-    writeHealth(merged);
+    await writeHealth(merged);
 
-    console.log('Health data saved:', merged);
+    console.log('Health saved to JSONBin:', merged);
     res.json({ ok: true, received: parsed });
   } catch(e) {
-    console.error('Health error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
 // ── Lecture données santé ──
-app.get('/health', (req, res) => {
-  res.json(readHealth());
+app.get('/health', async (req, res) => {
+  const data = await readHealth();
+  res.json(data);
 });
 
 // ── Status ──
-app.get('/', (req, res) => {
-  const health = readHealth();
-  res.json({ 
+app.get('/', async (req, res) => {
+  const health = await readHealth();
+  res.json({
     status: 'OB2G Proxy OK',
     health_data: Object.keys(health).length > 1 ? 'present' : 'empty',
     health_date: health.date || null
