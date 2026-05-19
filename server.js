@@ -8,10 +8,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 const JSONBIN_KEY = process.env.JSONBIN_KEY;
-const JSONBIN_ID = process.env.JSONBIN_ID;
+const JSONBIN_ID  = process.env.JSONBIN_ID;
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
-async function readHealth() {
+// ── JSONBin helpers ──
+async function readStore() {
   try {
     const r = await fetch(JSONBIN_URL + '/latest', {
       headers: { 'X-Master-Key': JSONBIN_KEY }
@@ -24,7 +25,7 @@ async function readHealth() {
   }
 }
 
-async function writeHealth(data) {
+async function writeStore(data) {
   try {
     await fetch(JSONBIN_URL, {
       method: 'PUT',
@@ -95,12 +96,46 @@ app.post('/claude', async (req, res) => {
   }
 });
 
-// ── Réception données Apple Santé ──
+// ── Clé Intervals ──
+app.get('/store/key', async (req, res) => {
+  const store = await readStore();
+  res.json({ key: store.intervals_key || null });
+});
+
+app.post('/store/key', async (req, res) => {
+  const { key } = req.body;
+  if (!key) return res.status(400).json({ error: 'No key' });
+  const store = await readStore();
+  store.intervals_key = key;
+  await writeStore(store);
+  res.json({ ok: true });
+});
+
+// ── Mémoire coach ──
+app.get('/store/memory', async (req, res) => {
+  const store = await readStore();
+  res.json({ memory: store.coach_memory || [] });
+});
+
+app.post('/store/memory', async (req, res) => {
+  const { entry } = req.body;
+  if (!entry) return res.status(400).json({ error: 'No entry' });
+  const store = await readStore();
+  if (!store.coach_memory) store.coach_memory = [];
+  // Garde les 20 dernières entrées max
+  store.coach_memory.unshift({ date: new Date().toISOString().split('T')[0], text: entry });
+  store.coach_memory = store.coach_memory.slice(0, 20);
+  await writeStore(store);
+  res.json({ ok: true });
+});
+
+// ── Données Apple Santé ──
 app.post('/health', async (req, res) => {
   try {
     const data = req.body;
     const today = new Date().toISOString().split('T')[0];
-    const existing = await readHealth();
+    const store = await readStore();
+    const existing = store.health || {};
     const parsed = { date: today };
 
     const metrics = data.data?.metrics || data.metrics || [];
@@ -111,39 +146,39 @@ app.post('/health', async (req, res) => {
       const latest = points[points.length - 1];
       const val = latest.qty ?? latest.value ?? latest.Qty ?? 0;
 
-      if (name.includes('sleep'))                                                parsed.sleep_hours = Math.round(val * 10) / 10;
-      else if (name.includes('resting_heart') || name.includes('resting heart')) parsed.resting_hr  = Math.round(val);
-      else if (name.includes('heart_rate_variability') || name.includes('hrv'))  parsed.hrv         = Math.round(val);
-      else if (name.includes('systolic'))                                         parsed.systolic    = Math.round(val);
-      else if (name.includes('diastolic'))                                        parsed.diastolic   = Math.round(val);
-      else if (name.includes('step'))                                             parsed.steps       = Math.round(val);
-      else if (name.includes('body_mass') || name.includes('weight'))            parsed.weight      = Math.round(val * 10) / 10;
-      else if (name.includes('active_energy') || name.includes('active energy')) parsed.calories    = Math.round(val);
+      if (name.includes('sleep'))                                                 parsed.sleep_hours = Math.round(val * 10) / 10;
+      else if (name.includes('resting_heart') || name.includes('resting heart'))  parsed.resting_hr  = Math.round(val);
+      else if (name.includes('heart_rate_variability') || name.includes('hrv'))   parsed.hrv         = Math.round(val);
+      else if (name.includes('systolic'))                                          parsed.systolic    = Math.round(val);
+      else if (name.includes('diastolic'))                                         parsed.diastolic   = Math.round(val);
+      else if (name.includes('step'))                                              parsed.steps       = Math.round(val);
+      else if (name.includes('body_mass') || name.includes('weight'))             parsed.weight      = Math.round(val * 10) / 10;
+      else if (name.includes('active_energy') || name.includes('active energy'))  parsed.calories    = Math.round(val);
     });
 
     const merged = existing.date === today ? { ...existing, ...parsed } : parsed;
-    await writeHealth(merged);
+    store.health = merged;
+    await writeStore(store);
 
-    console.log('Health saved to JSONBin:', merged);
     res.json({ ok: true, received: parsed });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── Lecture données santé ──
 app.get('/health', async (req, res) => {
-  const data = await readHealth();
-  res.json(data);
+  const store = await readStore();
+  res.json(store.health || {});
 });
 
 // ── Status ──
 app.get('/', async (req, res) => {
-  const health = await readHealth();
+  const store = await readStore();
   res.json({
     status: 'OB2G Proxy OK',
-    health_data: Object.keys(health).length > 1 ? 'present' : 'empty',
-    health_date: health.date || null
+    has_key: !!store.intervals_key,
+    health_date: store.health?.date || null,
+    memory_entries: (store.coach_memory || []).length
   });
 });
 
