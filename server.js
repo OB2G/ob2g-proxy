@@ -1,20 +1,42 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Fichier de persistance des données santé
+const HEALTH_FILE = path.join('/tmp', 'ob2g_health.json');
+
+function readHealth() {
+  try {
+    if (fs.existsSync(HEALTH_FILE)) {
+      return JSON.parse(fs.readFileSync(HEALTH_FILE, 'utf8'));
+    }
+  } catch(e) {}
+  return {};
+}
+
+function writeHealth(data) {
+  try {
+    fs.writeFileSync(HEALTH_FILE, JSON.stringify(data), 'utf8');
+  } catch(e) {
+    console.error('Erreur écriture health:', e.message);
+  }
+}
 
 // ── Proxy Intervals.icu ──
 app.all('/api*', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey) return res.status(401).json({ error: 'No API key' });
 
-  const path = req.path.replace('/api', '');
+  const path2 = req.path.replace('/api', '');
   const qs = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
-  const url = 'https://intervals.icu/api/v1/athlete/i552913' + path + qs;
+  const url = 'https://intervals.icu/api/v1/athlete/i552913' + path2 + qs;
 
   try {
     const opts = {
@@ -63,60 +85,60 @@ app.post('/claude', async (req, res) => {
   }
 });
 
-// ── Réception données Apple Santé (Health Auto Export) ──
-let healthStore = {};
-
+// ── Réception données Apple Santé ──
 app.post('/health', (req, res) => {
   try {
     const data = req.body;
     const today = new Date().toISOString().split('T')[0];
-
-    // Health Auto Export envoie un tableau de métriques
-    const metrics = data.data?.metrics || data.metrics || [];
-
+    const existing = readHealth();
     const parsed = { date: today };
 
+    // Format v2 Health Auto Export
+    const metrics = data.data?.metrics || data.metrics || [];
+
     metrics.forEach(metric => {
-      const name = metric.name || metric.type || '';
+      const name = (metric.name || metric.type || '').toLowerCase();
       const points = metric.data || metric.points || [];
       if (!points.length) return;
       const latest = points[points.length - 1];
-      const val = latest.qty || latest.value || latest.Qty || 0;
+      const val = latest.qty ?? latest.value ?? latest.Qty ?? 0;
 
-      if (name.includes('sleep') || name.includes('Sleep')) {
-        parsed.sleep_hours = Math.round(val * 10) / 10;
-      } else if (name.includes('resting_heart') || name.includes('Resting Heart')) {
-        parsed.resting_hr = Math.round(val);
-      } else if (name.includes('heart_rate_variability') || name.includes('HRV')) {
-        parsed.hrv = Math.round(val);
-      } else if (name.includes('blood_pressure_systolic') || name.includes('Systolic')) {
-        parsed.systolic = Math.round(val);
-      } else if (name.includes('blood_pressure_diastolic') || name.includes('Diastolic')) {
-        parsed.diastolic = Math.round(val);
-      } else if (name.includes('step') || name.includes('Step')) {
-        parsed.steps = Math.round(val);
-      } else if (name.includes('body_mass') || name.includes('Weight')) {
-        parsed.weight = Math.round(val * 10) / 10;
-      } else if (name.includes('active_energy') || name.includes('Active Energy')) {
-        parsed.calories = Math.round(val);
-      }
+      if (name.includes('sleep'))             parsed.sleep_hours   = Math.round(val * 10) / 10;
+      else if (name.includes('resting_heart') || name.includes('resting heart')) parsed.resting_hr = Math.round(val);
+      else if (name.includes('heart_rate_variability') || name.includes('hrv'))  parsed.hrv        = Math.round(val);
+      else if (name.includes('systolic'))     parsed.systolic      = Math.round(val);
+      else if (name.includes('diastolic'))    parsed.diastolic     = Math.round(val);
+      else if (name.includes('step'))         parsed.steps         = Math.round(val);
+      else if (name.includes('body_mass') || name.includes('weight')) parsed.weight = Math.round(val * 10) / 10;
+      else if (name.includes('active_energy') || name.includes('active energy')) parsed.calories = Math.round(val);
     });
 
-    healthStore = { ...healthStore, ...parsed };
-    console.log('Health data received:', parsed);
+    // Fusionne avec les données existantes du jour
+    const merged = existing.date === today ? { ...existing, ...parsed } : parsed;
+    writeHealth(merged);
+
+    console.log('Health data saved:', merged);
     res.json({ ok: true, received: parsed });
   } catch(e) {
+    console.error('Health error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── Lecture données santé par l'app ──
+// ── Lecture données santé ──
 app.get('/health', (req, res) => {
-  res.json(healthStore);
+  res.json(readHealth());
 });
 
 // ── Status ──
-app.get('/', (req, res) => res.json({ status: 'OB2G Proxy OK', health: Object.keys(healthStore).length > 0 }));
+app.get('/', (req, res) => {
+  const health = readHealth();
+  res.json({ 
+    status: 'OB2G Proxy OK',
+    health_data: Object.keys(health).length > 1 ? 'present' : 'empty',
+    health_date: health.date || null
+  });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('OB2G Proxy running on port ' + PORT));
