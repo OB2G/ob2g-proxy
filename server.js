@@ -183,4 +183,12 @@ app.get('/', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('OB2G Proxy running on port ' + PORT));
+app.listen(PORT, () => {
+  console.log('OB2G Proxy running on port ' + PORT);
+  // Keep-alive : ping toutes les 10 minutes pour éviter le cold start
+  setInterval(() => {
+    fetch('https://ob2g-proxy.onrender.com/')
+      .then(() => console.log('Keep-alive ping OK'))
+      .catch(() => console.log('Keep-alive ping failed'));
+  }, 10 * 60 * 1000);
+});
